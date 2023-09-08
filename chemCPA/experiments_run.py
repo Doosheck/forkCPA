@@ -8,7 +8,7 @@ from pathlib import Path
 from pprint import pformat
 
 import numpy as np
-import seml
+# import seml
 import torch
 from sacred import Experiment
 
@@ -19,7 +19,7 @@ from chemCPA.profiling import Profiler
 from chemCPA.train import custom_collate, evaluate, evaluate_r2, evaluate_r2_sc
 
 ex = Experiment()
-seml.setup_logger(ex)
+# seml.setup_logger(ex)
 
 
 @ex.post_run_hook

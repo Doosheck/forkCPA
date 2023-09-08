@@ -1,19 +1,30 @@
 from pathlib import Path
 from pprint import pprint
+import sys
+import numpy as np
 
-from seml.config import generate_configs, read_config
+# from seml.config import generate_configs, read_config
+from gori import Configurator
 
-from chemCPA.experiments_run import ExperimentWrapper
+
+print(sys.path)
+
+# from chemCPA.experiments_run import ExperimentWrapper
+from experiments_run import ExperimentWrapper
+
 
 if __name__ == "__main__":
     exp = ExperimentWrapper(init_all=False)
 
     # this is how seml loads the config file internally
     assert Path(
-        "simon/config_sciplex3_interactive.yaml"
+        "/mnt/storage/kasperek/sc-transformer/finetuning_num_genes.json"
     ).exists(), "config file not found"
     seml_config, slurm_config, experiment_config = read_config(
-        "simon/config_sciplex3_interactive.yaml"
+        "/mnt/storage/kasperek/sc-transformer/finetuning_num_genes.json"
+    )
+    seml_config, slurm_config, experiment_config = read_config(
+        "/mnt/storage/kasperek/sc-transformer/finetuning_num_genes.json"
     )
     # we take the first config generated
     configs = generate_configs(experiment_config)
