@@ -5,7 +5,7 @@ import numpy as np
 
 # from seml.config import generate_configs, read_config
 from gori import Configurator
-
+from config import generate_configs, read_config
 
 print(sys.path)
 
