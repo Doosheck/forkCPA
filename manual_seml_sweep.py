@@ -1,8 +1,6 @@
 from pathlib import Path
 from pprint import pprint
-
 from seml.config import generate_configs, read_config
-
 from chemCPA.experiments_run import ExperimentWrapper
 
 if __name__ == "__main__":
@@ -10,10 +8,10 @@ if __name__ == "__main__":
 
     # this is how seml loads the config file internally
     assert Path(
-        "simon/config_sciplex3_interactive.yaml"
+        "manual_run.yaml"
     ).exists(), "config file not found"
     seml_config, slurm_config, experiment_config = read_config(
-        "simon/config_sciplex3_interactive.yaml"
+       "manual_run.yaml"
     )
     # we take the first config generated
     configs = generate_configs(experiment_config)

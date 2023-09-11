@@ -3,7 +3,7 @@ seml:
   executable: chemCPA/experiments_run.py
   name: manual_run_chemCPA
   output_dir: project_folder/logs
-  conda_environment: chemical_CPA
+  conda_environment: chemcpa
   project_root_dir: .
 
 fixed:
@@ -11,15 +11,15 @@ fixed:
   profiling.outdir: "./"
 
   training.checkpoint_freq: 25                            # checkpoint frequency to run evaluate, and maybe save checkpoint
-  training.num_epochs: 101                                # maximum epochs for training. One epoch updates either autoencoder, or adversary, depending on adversary_steps.
-  training.max_minutes: 1200                              # maximum computation time
+  training.num_epochs: 5                                # maximum epochs for training. One epoch updates either autoencoder, or adversary, depending on adversary_steps.
+  training.max_minutes: 5                              # maximum computation time
   training.full_eval_during_train: False
   training.run_eval_disentangle: True                     # whether to calc the disentanglement loss when running the full eval
   training.run_eval_r2: True 
   training.run_eval_r2_sc: False 
   training.run_eval_logfold: False 
-  training.save_checkpoints: True                         # checkpoints tend to be ~250MB large for LINCS.
-  training.save_dir: project_folder/checkpoints
+  training.save_checkpoints: False                         # checkpoints tend to be ~250MB large for LINCS.
+  training.save_dir: checkpoints
   
   dataset.dataset_type: trapnell
   dataset.data_params.perturbation_key: condition         # stores name of the drug
@@ -28,9 +28,9 @@ fixed:
   dataset.data_params.covariate_keys: cell_type           # necessary field for cell types. Fill it with a dummy variable if no celltypes present.
   dataset.data_params.smiles_key: SMILES
   dataset.data_params.use_drugs_idx: True                 # If false, will use One-hot encoding instead
-  dataset.data_params.split_key: split_ood_multi_task
+  dataset.data_params.split_key: compare_split
 
-  model.pretrained_model_path: project_folder/checkpoints
+  model.pretrained_model_path: checkpoints
   model.pretrained_model_hashes: null
   model.additional_params.patience: 50 # patience for early stopping. Effective epochs: patience * checkpoint_freq.
   model.additional_params.decoder_activation: ReLU 
@@ -130,6 +130,6 @@ rdkit_model:
     #____________________________________________________________________________________________________
     #_Extended_gene_set_(setting_2)______________________________________________________________________
     model.append_ae_layer: True
-    dataset.data_params.dataset_path: project_folder/datasets/sciplex_complete_middle_subset.h5ad 
+    dataset.data_params.dataset_path: /home/thesis/ConditionalMongeGap/Datasets/sciplex_complete_middle_subset_compare.h5ad 
     dataset.data_params.degs_key: all_DEGs 
     #____________________________________________________________________________________________________

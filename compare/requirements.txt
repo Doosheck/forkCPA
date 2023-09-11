@@ -1,0 +1,7 @@
+scanpy
+dgl
+dgllife
+seml
+torch
+torchmetrics
+rdkit
