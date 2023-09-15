@@ -10,8 +10,8 @@ fixed:
   profiling.run_profiler: False
   profiling.outdir: "./"
 
-  training.checkpoint_freq: 2                            # checkpoint frequency to run evaluate, and maybe save checkpoint
-  training.num_epochs: 5                                # maximum epochs for training. One epoch updates either autoencoder, or adversary, depending on adversary_steps.
+  training.checkpoint_freq: 50                            # checkpoint frequency to run evaluate, and maybe save checkpoint
+  training.num_epochs: 500                                # maximum epochs for training. One epoch updates either autoencoder, or adversary, depending on adversary_steps.
   training.max_minutes: 5                              # maximum computation time
   training.full_eval_during_train: False
   training.run_eval_disentangle: True                     # whether to calc the disentanglement loss when running the full eval
