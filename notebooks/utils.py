@@ -86,9 +86,8 @@ def load_smiles(config, dataset, key_dict, return_pathway_map=False):
     return canon_smiles_unique_sorted, smiles_to_drug_map
 
 
-def load_model(config, canon_smiles_unique_sorted):
+def load_model(config, canon_smiles_unique_sorted, model_checkp):
     model_hash = config["config_hash"]
-    model_checkp = CHECKPOINT_DIR / (model_hash + ".pt")
 
     embedding_model = config["model"]["embedding"]["model"]
     if embedding_model == "vanilla":

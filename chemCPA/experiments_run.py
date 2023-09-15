@@ -422,7 +422,7 @@ class ExperimentWrapper:
                 # Ignore early stopping and save results at the end -> match data in mongoDB
                 if save_checkpoints and stop:
                     logging.info(f"Updating checkpoint at epoch {epoch}")
-                    file_name = f"{ex.observers[0].run_entry['config_hash']}.pt"
+                    file_name = f"model_{epoch}.pt"
                     torch.save(
                         (
                             self.autoencoder.state_dict(),
