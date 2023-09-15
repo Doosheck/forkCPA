@@ -2,7 +2,7 @@
 seml:
   executable: chemCPA/experiments_run.py
   name: manual_run_chemCPA
-  output_dir: project_folder/logs
+  output_dir: compare
   conda_environment: chemcpa
   project_root_dir: .
 
@@ -28,7 +28,7 @@ fixed:
   dataset.data_params.covariate_keys: cell_type           # necessary field for cell types. Fill it with a dummy variable if no celltypes present.
   dataset.data_params.smiles_key: SMILES
   dataset.data_params.use_drugs_idx: True                 # If false, will use One-hot encoding instead
-  dataset.data_params.split_key: split_random
+  dataset.data_params.split_key: split_ood_finetuning
 
   model.enable_cpa_mode: True
   model.pretrained_model_path: checkpoints
@@ -131,6 +131,6 @@ rdkit_model:
     #____________________________________________________________________________________________________
     #_Extended_gene_set_(setting_2)______________________________________________________________________
     model.append_ae_layer: True
-    dataset.data_params.dataset_path: /dss/dsshome1/0A/di93hoq/ConditionalMongeGap/Datasets/sciplex_complete_middle_subset_compare.h5ad
+    dataset.data_params.dataset_path: /home/thesis/ConditionalMongeGap/Datasets/sciplex_complete_middle_subset_compare.h5ad
     dataset.data_params.degs_key: all_DEGs 
     #____________________________________________________________________________________________________

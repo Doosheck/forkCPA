@@ -83,7 +83,7 @@ def get_chemical_representation(
 #             / "data"
 #             / "embeddings"
 #             / "rdkit2D_embedding_lincs_trapnell.parquet"
-            "/dss/dsshome1/0A/di93hoq/ConditionalMongeGap/Datasets/rdkit_drug_embeddings.parquet"
+            "/home/thesis/ConditionalMongeGap/Datasets/rdkit_drug_embeddings.parquet"
         )
     elif embedding_model == "jtvae":
         df = pd.read_parquet(data_dir / "jtvae" / "data" / "jtvae_dgl.parquet")
