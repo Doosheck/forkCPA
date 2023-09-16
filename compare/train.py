@@ -13,21 +13,27 @@ parser = ArgumentParser(
 )
 
 parser.add_argument(
-    "--path-data",
+    "--path",
     dest="path",
     type=str,
     help="Path to the projects folder.",
 )
 
+parser.add_argument(
+    "--save",
+    dest="save",
+    type=str,
+    help="Path and name of file to save the model.",
+)
 fargs = parser.parse_args()
 
 exp = ExperimentWrapper(init_all=False)
 # this is how seml loads the config file internally
 assert Path(
-    fargs.path + "forkCPA/manual_run.yaml"
+    fargs.path + "manual_run.yaml"
 ).exists(), "config file not found"
 seml_config, slurm_config, experiment_config = read_config(
-   fargs.path + "forkCPA/manual_run.yaml"
+   fargs.path + "manual_run.yaml"
 )
 # we take the first config generated
 configs = generate_configs(experiment_config)
@@ -53,4 +59,4 @@ exp.init_model(
 
 exp.update_datasets()
 
-train_results = exp.train(**args["training"])
+train_results = exp.train(**args["training"], save_name=fargs.save)

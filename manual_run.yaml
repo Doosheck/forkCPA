@@ -19,7 +19,7 @@ fixed:
   training.run_eval_r2_sc: False 
   training.run_eval_logfold: False 
   training.save_checkpoints: True                         # checkpoints tend to be ~250MB large for LINCS.
-  training.save_dir: compare/checkpoints
+  training.save_dir: mnt/forkCPA/compare/checkpoints
   
   dataset.dataset_type: trapnell
   dataset.data_params.perturbation_key: condition         # stores name of the drug
@@ -31,7 +31,7 @@ fixed:
   dataset.data_params.split_key: split_ood_finetuning
 
   model.enable_cpa_mode: True
-  model.pretrained_model_path: checkpoints
+  model.pretrained_model_path: /mnt/forkCPA/compare/checkpoints
   model.pretrained_model_hashes: null
   model.additional_params.patience: 50 # patience for early stopping. Effective epochs: patience * checkpoint_freq.
   model.additional_params.decoder_activation: ReLU 
@@ -131,6 +131,6 @@ rdkit_model:
     #____________________________________________________________________________________________________
     #_Extended_gene_set_(setting_2)______________________________________________________________________
     model.append_ae_layer: True
-    dataset.data_params.dataset_path: /home/thesis/ConditionalMongeGap/Datasets/sciplex_complete_middle_subset_compare.h5ad
+    dataset.data_params.dataset_path: /mnt/ConditionalMongeGap/Datasets/sciplex_complete_middle_subset_compare.h5ad
     dataset.data_params.degs_key: all_DEGs 
     #____________________________________________________________________________________________________

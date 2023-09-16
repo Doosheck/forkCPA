@@ -279,6 +279,7 @@ class ExperimentWrapper:
         run_eval_r2: bool = True,
         run_eval_r2_sc: bool = True,
         run_eval_logfold: bool = True,
+        save_name: str = None,
     ):
 
         print(f"CWD: {os.getcwd()}")
@@ -422,7 +423,11 @@ class ExperimentWrapper:
                 # Ignore early stopping and save results at the end -> match data in mongoDB
                 if save_checkpoints and stop:
                     logging.info(f"Updating checkpoint at epoch {epoch}")
-                    file_name = f"model_{epoch}.pt"
+                    if save_name is None:
+                        file_name = f"model_{epoch}.pt"
+                    else:
+                        file_name = {save_name}
+                        
                     torch.save(
                         (
                             self.autoencoder.state_dict(),

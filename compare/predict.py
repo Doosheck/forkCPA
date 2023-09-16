@@ -1,11 +1,15 @@
 import csv
 import torch
-import numpy as np
 import os
+import numpy as np
+import jax.numpy as jnp
 
-from notebooks.utils import compute_pred
+from pathlib import Path
+from pprint import pprint
+from seml.config import generate_configs, read_config
+from chemCPA.experiments_run import ExperimentWrapper
 from chemCPA.model import ComPert
-from argparser import ArgumentParser
+from argparse import ArgumentParser
 
 parser = ArgumentParser(
     prog="predict.py",
@@ -13,35 +17,65 @@ parser = ArgumentParser(
 )
 
 parser.add_argument(
-    "--path-data",
+    "--path",
     dest="path",
     type=str,
-    help="Path to the projects folder.",
+    help="Path to the ConditionalMongeGap project folder.",
 )
 
 parser.add_argument(
-    "--name-model",
-    dest="name",
+    "--model",
+    dest="model",
     type=str,
-    help="Name of the model.",
+    help="Path to the model.",
 )
 
 parser.add_argument(
-    "--name-save",
+    "--save",
     dest="save",
     type=str,
-    help="Name of the file to save the results.",
+    help="Path and name of file to save the results.",
 )
 
 fargs = parser.parse_args()
 
-# Load the utilities from the main project
-os.chdir(PATH + "ConditionalMongeGap/")
+exp = ExperimentWrapper(init_all=False)
+# this is how seml loads the config file internally
+assert Path(
+    fargs.path + "manual_run.yaml"
+).exists(), "config file not found"
+seml_config, slurm_config, experiment_config = read_config(
+   fargs.path + "manual_run.yaml"
+)
+# we take the first config generated
+configs = generate_configs(experiment_config)
+if len(configs) > 1:
+    print("Careful, more than one config generated from the yaml file")
+args = configs[0]
+pprint(args)
 
-from losses import sinkhorn_div
+exp.seed = 1337
+# loads the dataset splits
+exp.init_dataset(**args["dataset"])
+
+exp.init_drug_embedding(embedding=args["model"]["embedding"])
+exp.init_model(
+    hparams=args["model"]["hparams"],
+    additional_params=args["model"]["additional_params"],
+    load_pretrained=args["model"]["load_pretrained"],
+    append_ae_layer=args["model"]["append_ae_layer"],
+    enable_cpa_mode=args["model"]["enable_cpa_mode"],
+    pretrained_model_path=args["model"]["pretrained_model_path"],
+    pretrained_model_hashes=args["model"]["pretrained_model_hashes"],
+)
+
+exp.update_datasets()
+
+# Load the utilities from the main project
+os.chdir(fargs.path)
 from utils import calculate_metrics
 
-model = torch.load(fargs.path + f"forkCPA/compare/checkpoints/{args.name}.pt")
+model = torch.load(fargs.model)
 
 (
     state_dict,
@@ -58,14 +92,7 @@ model = ComPert(
 
 model = model.eval()
 
-prediction, embeddings = model.predict(
-    genes=exp.datasets["ood"].genes,
-    drugs_idx=exp.datasets["ood"].drugs_idx,
-    dosages=exp.datasets["ood"].dosages,
-    covariates=exp.datasets["ood"].covariates
-)
-
-with open(fargs.path + f"forkCPA/compare/{args.save}.csv", 'w') as f:
+with open(fargs.path + f"compare/{args.save}.csv", 'w') as f:
     w = csv.DictWriter(f, ["name", "type", "r2", "mae", "sinkhorn_source_target", "sinkhorn_target_pred", "mmd_source_target", "mmd_target_pred", "fid_source_target", "fid_target_pred", "e_source_target", "e_target_pred"])
     w.writeheader()
     print(
