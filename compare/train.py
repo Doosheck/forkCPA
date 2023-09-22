@@ -20,6 +20,13 @@ parser.add_argument(
 )
 
 parser.add_argument(
+    "--config",
+    dest="config",
+    type=str,
+    help="Path to the config file.",
+)
+
+parser.add_argument(
     "--save",
     dest="save",
     type=str,
@@ -30,10 +37,10 @@ fargs = parser.parse_args()
 exp = ExperimentWrapper(init_all=False)
 # this is how seml loads the config file internally
 assert Path(
-    fargs.path + "manual_run.yaml"
+    fargs.config
 ).exists(), "config file not found"
 seml_config, slurm_config, experiment_config = read_config(
-   fargs.path + "manual_run.yaml"
+   fargs.config
 )
 # we take the first config generated
 configs = generate_configs(experiment_config)
