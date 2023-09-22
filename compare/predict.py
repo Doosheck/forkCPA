@@ -1,6 +1,6 @@
 import csv
 import torch
-import os
+import sys
 import numpy as np
 import jax.numpy as jnp
 
@@ -20,7 +20,14 @@ parser.add_argument(
     "--path",
     dest="path",
     type=str,
-    help="Path to the ConditionalMongeGap project folder.",
+    help="Path to the forkCPA project folder.",
+)
+
+parser.add_argument(
+    "--utils",
+    dest="utils",
+    type=str,
+    help="Path to the utils folder.",
 )
 
 parser.add_argument(
@@ -72,7 +79,8 @@ exp.init_model(
 exp.update_datasets()
 
 # Load the utilities from the main project
-os.chdir(fargs.path)
+sys.path.append(fargs.utils)
+print(fargs.utils)
 from utils import calculate_metrics
 
 model = torch.load(fargs.model)
@@ -91,18 +99,19 @@ model = ComPert(
 )
 
 model = model.eval()
-
-with open(fargs.path + f"compare/{args.save}.csv", 'w') as f:
+skipped = []
+with open(f"{fargs.save}", 'w') as f:
     w = csv.DictWriter(f, ["name", "type", "r2", "mae", "sinkhorn_source_target", "sinkhorn_target_pred", "mmd_source_target", "mmd_target_pred", "fid_source_target", "fid_target_pred", "e_source_target", "e_target_pred"])
     w.writeheader()
     print(
         f"\n{'Condition':25s}{'':5s}" +
-        f"{'Typr':10s}{'':5s}{'r2':15s}{'':5s}{'mae':15s}" +
-        f"{'':5s}{'SINK(S,T)':15s}{'':5s}{'SINK(T,P)':15s}" +
+        f"{'Type':10s}{'':5s}{'r2':>15s}{'':5s}{'mae':>15s}" +
+        f"{'':5s}{'SINK(S,T)':>15s}{'':5s}{'SINK(T,P)':>15s}" +
         f"{'':5s}{'MMD(S,T)':>15s}{'':5s}{'MMD(T,P)':>15s}"+
         f"{'':5s}{'FID(S,T)':>15s}{'':5s}{'FID(S,P)':>12s}" +
         f"{'':5s}{'E(S,T)':>15s}{'':5s}{'E(T,P)':>15s}"
     )
+    print("-"*240)
     for type_ in ["test", "ood"]:
         prediction, embeddings = model.predict(
             genes=exp.datasets[type_].genes,
@@ -111,21 +120,36 @@ with open(fargs.path + f"compare/{args.save}.csv", 'w') as f:
             covariates=exp.datasets[type_].covariates
         )
 
+        # If the return has mean and std concatenated
+        prediction_mean = prediction.detach().numpy()[:, 0:2000]
+        prediction_std = prediction.detach().numpy()[:, 2000:4000]  
+
+        # If the return has alternating mean and std (this is NOT how the model was saved)
+        # prediction_mean = prediction.detach().numpy()[:, 0::2]
+        # prediction_std = prediction.detach().numpy()[:, 1::2]
+
         for name in np.unique(exp.datasets[type_].drugs_names):
             section = (exp.datasets[type_].drugs_names == name)
+            source = jnp.asarray(exp.datasets["test_control"].genes[0:len(section)])
+            target = jnp.asarray(exp.datasets[type_].genes[section])
+            predicted=jnp.asarray(prediction_mean[section])
+
+            if (target.shape[0] == 1) or (predicted.shape[0] == 1):
+                skipped.append(name)
+                continue
+
             results = calculate_metrics(
                 name=name,
                 type=type_,
-                source=jnp.asarray(exp.datasets["training_control"].genes[0:len(section)]),
-                target=jnp.asarray(exp.datasets[type_].genes[section]),
-                predicted=jnp.asarray(prediction.detach().numpy()[section, 0:2000]),
+                source=source,
+                target=target,
+                predicted=predicted,
                 epsilon=0.1,
                 epsilon_mmd=100
             )
             
-
             print(
-                ("{:25s}{:5s}{:10s}{:5s}" + "{:>15.3f}{:5s}" * 9 +"{:15.3f}").format(
+                ("{:25s}{:5s}{:10s}{:5s}" + "{:>15.3f}{:5s}" * 9 +"{:>15.3f}").format(
                     name,
                     '',
                     type_,
@@ -150,6 +174,10 @@ with open(fargs.path + f"compare/{args.save}.csv", 'w') as f:
                     '',
                     results['e_target_pred']
                 )
-        )
-        print(["-"]*210)
-        w.writerow(results)
+            )
+            
+            w.writerow(results)
+        
+        print("-"*240)
+
+print(f"Skipped {len(skipped)} drugs: {skipped}")

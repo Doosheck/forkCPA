@@ -426,7 +426,7 @@ class ExperimentWrapper:
                     if save_name is None:
                         file_name = f"model_{epoch}.pt"
                     else:
-                        file_name = {save_name}
+                        file_name = f"{save_name}"
                         
                     torch.save(
                         (
