@@ -23,6 +23,7 @@ parser.add_argument(
     dest="path",
     type=str,
     help="Path to the forkCPA project folder.",
+    default="/home/thesis/forkCPA/",
 )
 
 parser.add_argument(
@@ -30,6 +31,7 @@ parser.add_argument(
     dest="utils",
     type=str,
     help="Path to the utils folder.",
+    default="/home/thesis/ConditionalMongeGap/",
 )
 
 parser.add_argument(
@@ -37,6 +39,7 @@ parser.add_argument(
     dest="model",
     type=str,
     help="Path to the model.",
+    default="/home/thesis/forkCPA/compare/checkpoints/"
 )
 
 parser.add_argument(
@@ -44,6 +47,7 @@ parser.add_argument(
     dest="save",
     type=str,
     help="Path and name of file to save the results.",
+    default="/home/thesis/forkCPA/compare/results.csv"
 )
 
 fargs = parser.parse_args()
@@ -86,15 +90,15 @@ print(fargs.utils)
 from utils import calculate_metrics
 
 if os.path.isdir(fargs.model):
-    model_paths = [model_path for model_paths in os.listdir(fargs.model) if model_paths.endswith(".pt")]
+    models = [model for model in os.listdir(fargs.model) if model.endswith(".pt")]
 else:
     model_paths = [fargs.model]
 
-for model_path in model_paths:
-    with open(model, 'r') as f:
+for model_name in models:
+    with open(f"{fargs.model}{model_name[:-3]}_dict.json", 'rb') as f:
         train_results = json.load(f)
 
-    model = torch.load(fargs.model)
+    model = torch.load(fargs.model + model_name)
 
     (
         state_dict,
@@ -165,7 +169,7 @@ for model_path in model_paths:
                         '',
                         type_,
                         '',
-                        train_results["pertrbation disentanglement"],
+                        train_results["perturbation disentanglement"][-1],
                         '',
                         results['r2'],
                         '',

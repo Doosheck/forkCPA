@@ -17,6 +17,7 @@ parser.add_argument(
     dest="path",
     type=str,
     help="Path to the projects folder.",
+    default="/home/thesis/"
 )
 
 parser.add_argument(
@@ -24,6 +25,7 @@ parser.add_argument(
     dest="num_trainings",
     type=int,
     help="Number of trainings to perform.",
+    default=2,
 )
 
 parser.add_argument(
@@ -31,6 +33,7 @@ parser.add_argument(
     dest="config",
     type=str,
     help="Path to the config file.",
+    default="/home/thesis/forkCPA/manual_run.yaml",
 )
 
 parser.add_argument(
@@ -38,7 +41,9 @@ parser.add_argument(
     dest="save",
     type=str,
     help="Path and name of file to save the model.",
+    default="/home/thesis/forkCPA/compare/checkpoints/model.pt"
 )
+
 fargs = parser.parse_args()
 
 exp = ExperimentWrapper(init_all=False)
