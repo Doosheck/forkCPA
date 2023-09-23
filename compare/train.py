@@ -1,5 +1,5 @@
 import jax.numpy as jnp
-import os
+import json
 
 from pathlib import Path
 from pprint import pprint
@@ -17,6 +17,13 @@ parser.add_argument(
     dest="path",
     type=str,
     help="Path to the projects folder.",
+)
+
+parser.add_argument(
+    "--num_trainings",
+    dest="num_trainings",
+    type=int,
+    help="Number of trainings to perform.",
 )
 
 parser.add_argument(
@@ -66,4 +73,8 @@ exp.init_model(
 
 exp.update_datasets()
 
-train_results = exp.train(**args["training"], save_name=fargs.save)
+for num in range(fargs.num_trainings):
+    save_resuls = f"{fargs.save[:-3]}_{num}_dict.json"
+    train_results = exp.train(**args["training"], save_name=f"{fargs.save[:-3]}_{num}.pt")
+    print(f"Training {num} finished. Saving results as {save_resuls}")
+    json.dump(train_results, open(save_resuls, "w"))
