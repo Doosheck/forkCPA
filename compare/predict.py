@@ -25,6 +25,7 @@ parser.add_argument(
     dest="path",
     type=str,
     help="Path to the forkCPA project folder.",
+    default="/home/thesis/forkCPA/",
 )
 
 parser.add_argument(
@@ -32,6 +33,7 @@ parser.add_argument(
     dest="utils",
     type=str,
     help="Path to the utils folder.",
+    default="/home/thesis/ConditionalMongeGap/",
 )
 
 parser.add_argument(
@@ -39,6 +41,7 @@ parser.add_argument(
     dest="model",
     type=str,
     help="Path to the model.",
+    default="/home/thesis/forkCPA/compare/checkpoints/"
 )
 
 parser.add_argument(
@@ -46,6 +49,7 @@ parser.add_argument(
     dest="save",
     type=str,
     help="Path and name of file to save the results.",
+    default="/home/thesis/forkCPA/compare/results.csv"
 )
 
 fargs = parser.parse_args()
@@ -88,6 +92,7 @@ print(fargs.utils)
 from utils import calculate_metrics
 
 if os.path.isdir(fargs.model):
+    models = [model for model in os.listdir(fargs.model) if model.endswith(".pt")]
     models = [model for model in os.listdir(fargs.model) if model.endswith(".pt")]
 else:
     models = [fargs.model]
