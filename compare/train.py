@@ -49,32 +49,35 @@ assert Path(
 seml_config, slurm_config, experiment_config = read_config(
    fargs.config
 )
-# we take the first config generated
-configs = generate_configs(experiment_config)
-if len(configs) > 1:
-    print("Careful, more than one config generated from the yaml file")
-args = configs[0]
-pprint(args)
-
-exp.seed = 1337
-# loads the dataset splits
-exp.init_dataset(**args["dataset"])
-
-exp.init_drug_embedding(embedding=args["model"]["embedding"])
-exp.init_model(
-    hparams=args["model"]["hparams"],
-    additional_params=args["model"]["additional_params"],
-    load_pretrained=args["model"]["load_pretrained"],
-    append_ae_layer=args["model"]["append_ae_layer"],
-    enable_cpa_mode=args["model"]["enable_cpa_mode"],
-    pretrained_model_path=args["model"]["pretrained_model_path"],
-    pretrained_model_hashes=args["model"]["pretrained_model_hashes"],
-)
-
-exp.update_datasets()
 
 for num in range(fargs.num_trainings):
+    # we take the first config generated
+    configs = generate_configs(experiment_config)
+    if len(configs) > 1:
+        print("Careful, more than one config generated from the yaml file")
+    args = configs[0]
+    pprint(args)
+
+    exp.seed = 1337
+    # loads the dataset splits
+    exp.init_dataset(**args["dataset"])
+
+    exp.init_drug_embedding(embedding=args["model"]["embedding"])
+    exp.init_model(
+        hparams=args["model"]["hparams"],
+        additional_params=args["model"]["additional_params"],
+        load_pretrained=args["model"]["load_pretrained"],
+        append_ae_layer=args["model"]["append_ae_layer"],
+        enable_cpa_mode=args["model"]["enable_cpa_mode"],
+        pretrained_model_path=args["model"]["pretrained_model_path"],
+        pretrained_model_hashes=args["model"]["pretrained_model_hashes"],
+    )
+
+    exp.update_datasets()
+
     save_resuls = f"{fargs.save[:-3]}_{num}_dict.json"
     train_results = exp.train(**args["training"], save_name=f"{fargs.save[:-3]}_{num}.pt")
+    
     print(f"Training {num} finished. Saving results as {save_resuls}")
-    json.dump(train_results, open(save_resuls, "w"))
+    with open(save_resuls, "w") as f:
+        json.dump([train_results, args["model"]["hparams"]], f)

@@ -12,6 +12,8 @@ from seml.config import generate_configs, read_config
 from chemCPA.experiments_run import ExperimentWrapper
 from chemCPA.model import ComPert
 from argparse import ArgumentParser
+sys.path.append("/dss/dsshome1/0A/di93hoq/forkCPA/")
+from notebooks.utils import compute_pred
 
 parser = ArgumentParser(
     prog="predict.py",
@@ -86,43 +88,37 @@ print(fargs.utils)
 from utils import calculate_metrics
 
 if os.path.isdir(fargs.model):
-    model_paths = [model_path for model_paths in os.listdir(fargs.model) if model_paths.endswith(".pt")]
+    models = [model for model in os.listdir(fargs.model) if model.endswith(".pt")]
 else:
-    model_paths = [fargs.model]
+    models = [fargs.model]
 
-for model_path in model_paths:
-    with open(model, 'r') as f:
-        train_results = json.load(f)
+with open(f"{fargs.save}", 'w') as f:
+    w = csv.DictWriter(f, ["model", "name", "type", "disentanglement", "r2", "mae", "sinkhorn_source_target", "sinkhorn_target_pred", "mmd_source_target", "mmd_target_pred", "fid_source_target", "fid_target_pred", "e_source_target", "e_target_pred"])
+    w.writeheader()
+    
+    for model_name in models:
+        with open(f"{fargs.model}{model_name[:-3]}_dict.json", 'rb') as f:
+            train_results = json.load(f)
 
-    model = torch.load(fargs.model)
+        model = torch.load(fargs.model + model_name)
 
-    (
-        state_dict,
-        cov_adv_state_dicts,
-        cov_emb_state_dicts,
-        init_args,
-        history,
+        (
+            state_dict,
+            cov_adv_state_dicts,
+            cov_emb_state_dicts,
+            init_args,
+            history,
 
-    ) = model
+        ) = model
 
-    model = ComPert(
-            **init_args, drug_embeddings=exp.drug_embeddings
-    )
-
-    model = model.eval()
-    skipped = []
-    with open(f"{fargs.save}", 'w') as f:
-        w = csv.DictWriter(f, ["name", "type", "r2", "mae", "sinkhorn_source_target", "sinkhorn_target_pred", "mmd_source_target", "mmd_target_pred", "fid_source_target", "fid_target_pred", "e_source_target", "e_target_pred"])
-        w.writeheader()
-        print(
-            f"\n{'Condition':25s}{'':5s}" +
-            f"{'Type':10s}{'':5s}{'Disentanglement'}{'':5s}{'r2':>15s}{'':5s}{'mae':>15s}" +
-            f"{'':5s}{'SINK(S,T)':>15s}{'':5s}{'SINK(T,P)':>15s}" +
-            f"{'':5s}{'MMD(S,T)':>15s}{'':5s}{'MMD(T,P)':>15s}"+
-            f"{'':5s}{'FID(S,T)':>15s}{'':5s}{'FID(S,P)':>12s}" +
-            f"{'':5s}{'E(S,T)':>15s}{'':5s}{'E(T,P)':>15s}"
+        model = ComPert(
+                **init_args, drug_embeddings=exp.drug_embeddings
         )
-        print("-"*240)
+
+        model = model.eval()
+        skipped = []
+    
+
         for type_ in ["test", "ood"]:
             prediction, embeddings = model.predict(
                 genes=exp.datasets[type_].genes,
@@ -131,13 +127,15 @@ for model_path in model_paths:
                 covariates=exp.datasets[type_].covariates
             )
 
-            # If the return has mean and std concatenated
+            drug_r2, _ = compute_pred(
+                model,
+                exp.datasets[type_]
+            )
+
+            print(f"Drug R2 {type_}: {drug_r2}")
+            
             prediction_mean = prediction.detach().numpy()[:, 0:2000]
             prediction_std = prediction.detach().numpy()[:, 2000:4000]  
-
-            # If the return has alternating mean and std (this is NOT how the model was saved)
-            # prediction_mean = prediction.detach().numpy()[:, 0::2]
-            # prediction_std = prediction.detach().numpy()[:, 1::2]
 
             for name in np.unique(exp.datasets[type_].drugs_names):
                 section = (exp.datasets[type_].drugs_names == name)
@@ -158,39 +156,10 @@ for model_path in model_paths:
                     epsilon=0.1,
                     epsilon_mmd=100
                 )
-                
-                print(
-                    ("{:25s}{:5s}{:10s}{:5s}" + "{:>15.3f}{:5s}" * 10 +"{:>15.3f}").format(
-                        name,
-                        '',
-                        type_,
-                        '',
-                        train_results["pertrbation disentanglement"],
-                        '',
-                        results['r2'],
-                        '',
-                        results["mae"],
-                        '',
-                        results['sinkhorn_source_target'],
-                        '',
-                        results['sinkhorn_target_pred'],
-                        '' ,
-                        results['mmd_source_target'],
-                        '',
-                        results['mmd_target_pred'],
-                        '',
-                        results['fid_target_pred'],
-                        '',
-                        results['fid_source_target'],
-                        '',
-                        results['e_source_target'],
-                        '',
-                        results['e_target_pred']
-                    )
-                )
+
+                results["model"] = model_name
+                results["disentanglement"] = train_results[0]["perturbation disentanglement"]
                 
                 w.writerow(results)
-            
-            print("-"*240)
 
 print(f"Skipped {len(skipped)} drugs: {skipped}")
