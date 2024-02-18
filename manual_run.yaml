@@ -131,6 +131,6 @@ rdkit_model:
     #____________________________________________________________________________________________________
     #_Extended_gene_set_(setting_2)______________________________________________________________________
     model.append_ae_layer: True
-    dataset.data_params.dataset_path: /home/icb/gori.camps/forkCPA/pca_data.h5ad
+    dataset.data_params.dataset_path: /home/icb/gori.camps/forkCPA/compare/pca_data_train.h5ad
     dataset.data_params.degs_key: all_DEGs 
     #____________________________________________________________________________________________________
