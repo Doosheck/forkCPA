@@ -1,88 +1,38 @@
-import jax.numpy as jnp
-import json
-
 from pathlib import Path
-from pprint import pprint
 from seml.config import generate_configs, read_config
+import sys
+import torch
+
+# Set the path to the folder containing the yaml file
+PATH = Path(__file__).resolve().parent.parent
+sys.path.append(str(PATH))
 from chemCPA.experiments_run import ExperimentWrapper
-from argparse import ArgumentParser
 
-parser = ArgumentParser(
-    prog="train.py",
-    description="Train ChemCPA",
-)
-
-parser.add_argument(
-    "--path",
-    dest="path",
-    type=str,
-    help="Path to the projects folder.",
-    default="/home/thesis/"
-)
-
-parser.add_argument(
-    "--num_trainings",
-    dest="num_trainings",
-    type=int,
-    help="Number of trainings to perform.",
-    default=2,
-)
-
-parser.add_argument(
-    "--config",
-    dest="config",
-    type=str,
-    help="Path to the config file.",
-    default="/home/thesis/forkCPA/manual_run.yaml",
-)
-
-parser.add_argument(
-    "--save",
-    dest="save",
-    type=str,
-    help="Path and name of file to save the model.",
-    default="/home/thesis/forkCPA/compare/checkpoints/model.pt"
-)
-
-fargs = parser.parse_args()
-
-exp = ExperimentWrapper(init_all=False)
-# this is how seml loads the config file internally
-assert Path(
-    fargs.config
-).exists(), "config file not found"
+# This is how seml loads the config file internally
 seml_config, slurm_config, experiment_config = read_config(
-   fargs.config
+   str(PATH) + "/manual_run.yaml"
+)
+configs = generate_configs(experiment_config)
+config = configs[0]
+
+# Create seml experiment
+exp = ExperimentWrapper(init_all=False)
+exp.seed = 1337
+exp.init_dataset(**config["dataset"])
+
+exp.init_drug_embedding(embedding=config["model"]["embedding"])
+exp.init_model(
+    hparams=config["model"]["hparams"],
+    additional_params=config["model"]["additional_params"],
+    load_pretrained=config["model"]["load_pretrained"],
+    append_ae_layer=config["model"]["append_ae_layer"],
+    enable_cpa_mode=config["model"]["enable_cpa_mode"],
+    pretrained_model_path=config["model"]["pretrained_model_path"],
+    pretrained_model_hashes=config["model"]["pretrained_model_hashes"],
 )
 
-for num in range(fargs.num_trainings):
-    # we take the first config generated
-    configs = generate_configs(experiment_config)
-    if len(configs) > 1:
-        print("Careful, more than one config generated from the yaml file")
-    args = configs[0]
-    pprint(args)
+exp.update_datasets()
 
-    exp.seed = 1337
-    # loads the dataset splits
-    exp.init_dataset(**args["dataset"])
-
-    exp.init_drug_embedding(embedding=args["model"]["embedding"])
-    exp.init_model(
-        hparams=args["model"]["hparams"],
-        additional_params=args["model"]["additional_params"],
-        load_pretrained=args["model"]["load_pretrained"],
-        append_ae_layer=args["model"]["append_ae_layer"],
-        enable_cpa_mode=args["model"]["enable_cpa_mode"],
-        pretrained_model_path=args["model"]["pretrained_model_path"],
-        pretrained_model_hashes=args["model"]["pretrained_model_hashes"],
-    )
-
-    exp.update_datasets()
-
-    save_resuls = f"{fargs.save[:-3]}_{num}_dict.json"
-    train_results = exp.train(**args["training"], save_name=f"{fargs.save[:-3]}_{num}.pt")
-    
-    print(f"Training {num} finished. Saving results as {save_resuls}")
-    with open(save_resuls, "w") as f:
-        json.dump([train_results, args["model"]["hparams"]], f)
+# Train the model
+print(f"Training the model on {'cuda' if torch.cuda.is_available() else 'cpu'}")
+train_results = exp.train(**config["training"])

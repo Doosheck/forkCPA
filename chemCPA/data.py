@@ -95,7 +95,10 @@ class Dataset:
         else:
             data = sc.read(data)
         logging.info(f"Finished data loading.")
-        self.genes = torch.Tensor(data.X.A)
+        try:
+            self.genes = torch.Tensor(data.X.A)
+        except AttributeError:
+            self.genes = torch.Tensor(data.X)
         self.var_names = data.var_names
 
         self.perturbation_key = perturbation_key
@@ -212,7 +215,7 @@ class Dataset:
                 self.covariate_names_unique[cov] = np.unique(self.covariate_names[cov])
 
                 names = self.covariate_names_unique[cov]
-                encoder_cov = OneHotEncoder(sparse=False)
+                encoder_cov = OneHotEncoder(sparse_output=False)
                 encoder_cov.fit(names.reshape(-1, 1))
 
                 self.atomic_сovars_dict[cov] = dict(

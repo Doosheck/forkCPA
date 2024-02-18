@@ -6,7 +6,7 @@ import time
 from collections import defaultdict
 from pathlib import Path
 from pprint import pformat
-
+import tqdm
 import numpy as np
 # import seml
 import torch
@@ -295,7 +295,7 @@ class ExperimentWrapper:
             # all items are initialized to 0.0
             epoch_training_stats = defaultdict(float)
 
-            for data in self.datasets["loader_tr"]:
+            for data in tqdm.tqdm(self.datasets["loader_tr"]):
                 if self.dataset.use_drugs_idx:
                     genes, drugs_idx, dosages, degs, covariates = (
                         data[0],
@@ -366,6 +366,7 @@ class ExperimentWrapper:
                     #     self.datasets["test_treated"],
                     # )
                     self.autoencoder.train()
+                
                 test_score = (
                     np.mean(evaluation_stats["test"])
                     if evaluation_stats["test"]
@@ -421,7 +422,8 @@ class ExperimentWrapper:
                 # Cmp using == is fine, since if we improve we'll have updated this in `early_stopping`
                 improved_model = self.autoencoder.best_score == test_score
                 # Ignore early stopping and save results at the end -> match data in mongoDB
-                if save_checkpoints and stop:
+                print(f"Stop: {stop}, save_checkpoints: {save_checkpoints}, improved_model: {improved_model}, test_score: {test_score}")
+                if save_checkpoints:# and stop:
                     logging.info(f"Updating checkpoint at epoch {epoch}")
                     if save_name is None:
                         file_name = f"model_{epoch}.pt"

@@ -152,3 +152,8 @@ dmypy.json
 settings.json
 scripts/*.yaml  
 embeddings_dir
+
+# Additionals
+compare/BatchJobs
+*.pt
+*.h5ad

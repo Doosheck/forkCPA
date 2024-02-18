@@ -97,9 +97,9 @@ def load_model(config, canon_smiles_unique_sorted, model_checkp):
             smiles=canon_smiles_unique_sorted,
             embedding_model=config["model"]["embedding"]["model"],
             data_dir=config["model"]["embedding"]["directory"],
-            device="cuda",
+            device="cpu",
         )
-    dumped_model = torch.load(model_checkp)
+    dumped_model = torch.load(model_checkp, map_location="cpu")
     if len(dumped_model) == 3:
         print("This model does not contain the covariate embeddings or adversaries.")
         state_dict, init_args, history = dumped_model

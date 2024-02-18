@@ -1,170 +1,122 @@
-import csv
-import torch
+import scanpy as sc
 import sys
-import numpy as np
-import jax.numpy as jnp
-import os
-import json
+import torch
 
-from pathlib import Path
-from pprint import pprint
-from seml.config import generate_configs, read_config
-from chemCPA.experiments_run import ExperimentWrapper
 from chemCPA.model import ComPert
-from argparse import ArgumentParser
-sys.path.append("/dss/dsshome1/0A/di93hoq/forkCPA/")
-from notebooks.utils import compute_pred
+from chemCPA.train import compute_prediction
+from notebooks.utils import repeat_n
+import argparse
+import pandas as pd
 
-parser = ArgumentParser(
-    prog="predict.py",
-    description="Predict the perturbation effect of a drug. And compute metrics.",
-)
+evaluator_path = "/home/icb/gori.camps/ConditionalOT_Perturbations/src/"
+sys.path.append(evaluator_path)
+from evaluator import calculate_metrics
 
-parser.add_argument(
-    "--path",
-    dest="path",
+# Set model path and dataset path
+argparser = argparse.ArgumentParser()
+argparser.add_argument(
+    "--model_path",
     type=str,
-    help="Path to the forkCPA project folder.",
-    default="/home/thesis/forkCPA/",
+    required=True,
+    help="The path of the model to load",
 )
-
-parser.add_argument(
-    "--utils",
-    dest="utils",
+argparser.add_argument(
+    "--dataset_path",
     type=str,
-    help="Path to the utils folder.",
-    default="/home/thesis/ConditionalMongeGap/",
+    required=True,
+    help="The path of the dataset to load",
 )
 
-parser.add_argument(
-    "--model",
-    dest="model",
-    type=str,
-    help="Path to the model.",
-    default="/home/thesis/forkCPA/compare/checkpoints/"
+fargs = argparser.parse_args()
+
+#Load the model
+model = torch.load(
+    fargs.model_path,
+    map_location=torch.device("cuda" if torch.cuda.is_available() else "cpu"),
 )
 
-parser.add_argument(
-    "--save",
-    dest="save",
-    type=str,
-    help="Path and name of file to save the results.",
-    default="/home/thesis/forkCPA/compare/results.csv"
+(
+    state_dict,
+    cov_adv_state_dicts,
+    cov_emb_state_dicts,
+    init_args,
+    history,
+
+) = model
+
+model = ComPert(
+        **init_args,
 )
 
-fargs = parser.parse_args()
-
-exp = ExperimentWrapper(init_all=False)
-# this is how seml loads the config file internally
-assert Path(
-    fargs.path + "manual_run.yaml"
-).exists(), "config file not found"
-seml_config, slurm_config, experiment_config = read_config(
-   fargs.path + "manual_run.yaml"
-)
-# we take the first config generated
-configs = generate_configs(experiment_config)
-if len(configs) > 1:
-    print("Careful, more than one config generated from the yaml file")
-args = configs[0]
-pprint(args)
-
-exp.seed = 1337
-# loads the dataset splits
-exp.init_dataset(**args["dataset"])
-
-exp.init_drug_embedding(embedding=args["model"]["embedding"])
-exp.init_model(
-    hparams=args["model"]["hparams"],
-    additional_params=args["model"]["additional_params"],
-    load_pretrained=args["model"]["load_pretrained"],
-    append_ae_layer=args["model"]["append_ae_layer"],
-    enable_cpa_mode=args["model"]["enable_cpa_mode"],
-    pretrained_model_path=args["model"]["pretrained_model_path"],
-    pretrained_model_hashes=args["model"]["pretrained_model_hashes"],
+# Get the data to evaluate on
+adata = sc.read_h5ad(
+    fargs.dataset_path
 )
 
-exp.update_datasets()
-
-# Load the utilities from the main project
-sys.path.append(fargs.utils)
-print(fargs.utils)
-from utils import calculate_metrics
-
-if os.path.isdir(fargs.model):
-    models = [model for model in os.listdir(fargs.model) if model.endswith(".pt")]
-    models = [model for model in os.listdir(fargs.model) if model.endswith(".pt")]
-else:
-    models = [fargs.model]
-
-with open(f"{fargs.save}", 'w') as f:
-    w = csv.DictWriter(f, ["model", "name", "type", "disentanglement", "r2", "mae", "sinkhorn_source_target", "sinkhorn_target_pred", "mmd_source_target", "mmd_target_pred", "fid_source_target", "fid_target_pred", "e_source_target", "e_target_pred"])
-    w.writeheader()
-    
-    for model_name in models:
-        with open(f"{fargs.model}{model_name[:-3]}_dict.json", 'rb') as f:
-            train_results = json.load(f)
-
-        model = torch.load(fargs.model + model_name)
-
-        (
-            state_dict,
-            cov_adv_state_dicts,
-            cov_emb_state_dicts,
-            init_args,
-            history,
-
-        ) = model
-
-        model = ComPert(
-                **init_args, drug_embeddings=exp.drug_embeddings
+"""
+Compute the predictions.
+We hardcode the cell line and condition for now.
+Since we want to average over the conditions, we will simply use their idx, without caring
+what the actual trearment is.
+"""
+cell_line_dict = {
+    "A549": torch.tensor([1, 0, 0]),
+    "K562": torch.Tensor([0, 1, 0]),
+    "MCF7": torch.Tensor([0, 0, 1]),
+}
+MAX_DOSE = 10000
+for cell_line_name, cell_line_code in cell_line_dict.items():
+    metrics = {}
+    for condition_idx in range(len(adata.obs['condition'].unique())):
+        
+        condition_name = adata.obs['condition'].unique()[condition_idx]
+        split = adata[
+                (adata.obs['cell_type'] == cell_line_name) &
+                (adata.obs['condition'] == condition_name)
+        ].obs["split_ood_finetuning"]
+        
+        gex_target = torch.Tensor(
+            adata[
+                (adata.obs['cell_type'] == cell_line_name) &
+                (adata.obs['condition'] == condition_name)
+            ].X.A
         )
 
-        model = model.eval()
-        skipped = []
-    
-
-        for type_ in ["test", "ood"]:
-            prediction, embeddings = model.predict(
-                genes=exp.datasets[type_].genes,
-                drugs_idx=exp.datasets[type_].drugs_idx,
-                dosages=exp.datasets[type_].dosages,
-                covariates=exp.datasets[type_].covariates
+        gex_source = torch.Tensor(
+            adata[
+                (adata.obs['cell_type'] == cell_line_name) &
+                (adata.obs['condition'] == 'control')
+            ].X.A
+        )[:gex_target.shape[0]]
+        
+        cell_line_repeated = [
+            repeat_n(
+                cell_line_code,
+                gex_source.shape[0]
             )
+        ]
 
-            drug_r2, _ = compute_pred(
-                model,
-                exp.datasets[type_]
-            )
+        condition_repeated = (
+            repeat_n(torch.Tensor([condition_idx]), gex_source.shape[0]).squeeze().to(torch.long),
+            repeat_n(torch.Tensor([MAX_DOSE]), gex_source.shape[0]).squeeze().to(torch.long)
+        )
 
-            print(f"Drug R2 {type_}: {drug_r2}")
-            
-            prediction_mean = prediction.detach().numpy()[:, 0:2000]
-            prediction_std = prediction.detach().numpy()[:, 2000:4000]  
-
-            for name in np.unique(exp.datasets[type_].drugs_names):
-                section = (exp.datasets[type_].drugs_names == name)
-                source = jnp.asarray(exp.datasets["test_control"].genes[0:len(section)])
-                target = jnp.asarray(exp.datasets[type_].genes[section])
-                predicted=jnp.asarray(prediction_mean[section])
-
-                if (target.shape[0] == 1) or (predicted.shape[0] == 1):
-                    skipped.append(name)
-                    continue
-
-                results = calculate_metrics(
-                    name=name,
-                    type=type_,
-                    source=source,
-                    target=target,
-                    predicted=predicted,
-                    epsilon=0.1,
-                    epsilon_mmd=100
-                )
-
-                results["model"] = model_name
-                results["disentanglement"] = train_results[0]["perturbation disentanglement"]
-                
-                w.writerow(results)
-
-print(f"Skipped {len(skipped)} drugs: {skipped}")
+        # ChemCPA predicts a gaussian for each gene, we take the mean as the prediction
+        prediction, _= compute_prediction(
+            model,
+            genes=gex_source,
+            emb_covs=cell_line_repeated,
+            emb_drugs=condition_repeated,
+        )
+        
+        metrics[f"{cell_line_name}_{condition_name}"] = calculate_metrics(
+            gex_source,
+            gex_target,
+            prediction
+        )
+        
+        
+        metrics_df = pd.DataFrame(metrics)
+        metrics_df["split"] = split
+        
+        metrics_df.to_csv("metrics_chemcpa.csv", mode='a', header=False)
